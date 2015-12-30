@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-func testExpiration(store DataStore, t *testing.T) {
+func testExpiration(store Store, t *testing.T) {
 	store.SetLifetime(time.Millisecond * 10)
 
 	store.Add("v1", nil)
@@ -54,7 +54,7 @@ func testExpiration(store DataStore, t *testing.T) {
 	}
 }
 
-func testValueHandling(store DataStore, t *testing.T) {
+func testValueHandling(store Store, t *testing.T) {
 	testValues := map[string]int{
 		"v1":  3,
 		"v2":  6,
@@ -125,7 +125,7 @@ func testValueHandling(store DataStore, t *testing.T) {
 	}
 }
 
-func testKeyCollision(store DataStore, t *testing.T) {
+func testKeyCollision(store Store, t *testing.T) {
 	store.SetLifetime(time.Millisecond)
 
 	if err := store.Add("v1", nil); err != nil {
@@ -136,7 +136,7 @@ func testKeyCollision(store DataStore, t *testing.T) {
 	}
 }
 
-func testSetExpiration(store DataStore, t *testing.T) {
+func testSetExpiration(store Store, t *testing.T) {
 	store.SetLifetime(time.Millisecond)
 
 	store.Add("v1", nil)
@@ -150,7 +150,7 @@ func testSetExpiration(store DataStore, t *testing.T) {
 	}
 }
 
-func benchmarkValueCreation(store DataStore, b *testing.B) {
+func benchmarkValueCreation(store Store, b *testing.B) {
 	store.SetLifetime(time.Millisecond)
 	b.ResetTimer()
 

@@ -23,6 +23,10 @@ import (
 	"github.com/raiqub/dot"
 )
 
+// A MemStore provides in-memory key:value cache that expires after defined
+// duration of time.
+//
+// It is a implementation of Store interface.
 type MemStore struct {
 	values      map[string]Data
 	lifetime    time.Duration
