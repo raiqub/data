@@ -20,11 +20,24 @@ import (
 	"time"
 )
 
+// A Data represents a value stored in-memory.
 type Data interface {
+	// Delete removes current data.
 	Delete()
+
+	// IsExpired returns whether current value is expired.
 	IsExpired() bool
+
+	// Hit postpone data expiration time to current time added to its lifetime
+	// duration.
 	Hit()
+
+	// Value of current instance.
 	Value() interface{}
+
+	// SetLifetime sets the lifetime duration for current instance.
 	SetLifetime(time.Duration)
+
+	// SetValue sets the value of current instance.
 	SetValue(interface{})
 }

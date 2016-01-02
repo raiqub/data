@@ -177,9 +177,9 @@ func (s *MemStore) gc() dot.LockStatus {
 
 	if writeLocked {
 		return dot.WriteLocked
-	} else {
-		return dot.ReadLocked
 	}
+
+	return dot.ReadLocked
 }
 
 // Set sets the value of specified key.
