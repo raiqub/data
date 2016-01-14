@@ -1,0 +1,4 @@
+PASS
+BenchmarkMemStoreValueCreation-4  	  200000	     10225 ns/op	     112 B/op	       5 allocs/op
+BenchmarkMongoStoreValueCreation-4	   10000	    192308 ns/op	    5384 B/op	     126 allocs/op
+ok  	github.com/raiqub/data	31.785s

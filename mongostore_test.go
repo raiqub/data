@@ -49,6 +49,15 @@ func TestMongoStore(t *testing.T) {
 	testSetExpiration(store, t)
 }
 
+func BenchmarkMongoStoreValueCreation(b *testing.B) {
+	session, env := prepareMongoEnvironment(b)
+	defer env.Dispose()
+
+	store := NewMongoStore(session.DB(""), colName, time.Millisecond)
+	store.EnsureAccuracy(true)
+	benchmarkValueCreation(store, b)
+}
+
 func openSession(url string) (*mgo.Session, error) {
 	session, err := mgo.Dial(url)
 	if err != nil {
@@ -65,15 +74,15 @@ func openSession(url string) (*mgo.Session, error) {
 	return session, nil
 }
 
-func prepareMongoEnvironment(t *testing.T) (*mgo.Session, dot.Disposable) {
+func prepareMongoEnvironment(tb testing.TB) (*mgo.Session, dot.Disposable) {
 	env := dot.NewMulticastDispose()
-	mongo := test.NewMongoDBEnvironment(t)
+	mongo := test.NewMongoDBEnvironment(tb)
 	if !mongo.Applicability() {
-		t.Skip("This test cannot be run because Docker is not acessible")
+		tb.Skip("This test cannot be run because Docker is not acessible")
 	}
 
 	if !mongo.Run() {
-		t.Fatal("Could not start MongoDB server")
+		tb.Fatal("Could not start MongoDB server")
 	}
 	env.Add(func() {
 		mongo.Stop()
@@ -82,7 +91,7 @@ func prepareMongoEnvironment(t *testing.T) (*mgo.Session, dot.Disposable) {
 	net, err := mongo.Network()
 	if err != nil {
 		env.Dispose()
-		t.Fatalf("Error getting MongoDB IP address: %s\n", err)
+		tb.Fatalf("Error getting MongoDB IP address: %s\n", err)
 	}
 
 	mgourl := fmt.Sprintf(mongoURLTpl, net[0].IpAddress, net[0].Port)
@@ -90,7 +99,7 @@ func prepareMongoEnvironment(t *testing.T) (*mgo.Session, dot.Disposable) {
 	session, err := openSession(mgourl)
 	if err != nil {
 		env.Dispose()
-		t.Fatalf("Error opening a MongoDB session: %s\n", err)
+		tb.Fatalf("Error opening a MongoDB session: %s\n", err)
 	}
 	env.Add(func() {
 		session.Close()

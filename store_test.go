@@ -207,4 +207,6 @@ func benchmarkValueCreation(store Store, b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		store.Get(strconv.Itoa(i), &result)
 	}
+
+	b.StopTimer()
 }
