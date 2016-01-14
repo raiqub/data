@@ -88,8 +88,8 @@ func testValueHandling(store Store, t *testing.T) {
 	}
 	rmTestKey := "v5"
 	changeValues := map[string]valueType{
-		"v10": valueType{5062},
-		"v7":  valueType{4099},
+		"v10": {5062},
+		"v7":  {4099},
 	}
 
 	store.SetLifetime(time.Second * 1)

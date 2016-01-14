@@ -77,13 +77,13 @@ func setValue(src, dst interface{}) error {
 	if src == nil {
 		return nil
 	}
-	
+
 	srcVal := reflect.ValueOf(src)
 	dstVal := reflect.ValueOf(dst)
 	if dstVal.Kind() != reflect.Ptr || dstVal.IsNil() {
 		return &IndereferenceError{reflect.TypeOf(dst)}
 	}
-	
+
 	dstVal.Elem().Set(srcVal)
 	return nil
 }
