@@ -1,9 +1,16 @@
+sudo: required
 language: go
 
 go:
   - 1.4
   - 1.5
   - tip
+
+services:
+  - docker
+
+before_install:
+- docker pull mongo
 
 before_script:
   - go get -u github.com/golang/lint/golint
@@ -14,8 +21,6 @@ before_script:
 script:
   - go test -v --race ./...
   - goveralls -service=travis-ci -repotoken $COVERALLS_TOKEN
-
-after_script:
   - test -z "$(gofmt -s -l -w . | tee /dev/stderr)"
   - test -z "$(golint ./... | tee /dev/stderr)"
   - go vet ./...

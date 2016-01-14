@@ -17,6 +17,7 @@
 package data
 
 import (
+	"reflect"
 	"time"
 )
 
@@ -42,13 +43,17 @@ type Store interface {
 	Delete(key string) error
 
 	// Flush deletes any cached value into current instance.
-	Flush()
+	//
+	// Errors:
+	// NotSupportedError when current method cannot be implemented.
+	Flush() error
 
-	// Get gets the value stored by specified key.
+	// Get gets the value stored by specified key and stores the result in the
+	// value pointed to by ref.
 	//
 	// Errors:
 	// InvalidKeyError when requested key could not be found.
-	Get(key string) (interface{}, error)
+	Get(key string, ref interface{}) error
 
 	// GC garbage collects all expired data.
 	GC()
@@ -66,4 +71,19 @@ type Store interface {
 	// SetTransient defines whether should extends expiration of stored value
 	// when it is read or written.
 	SetTransient(bool)
+}
+
+func setValue(src, dst interface{}) error {
+	if src == nil {
+		return nil
+	}
+	
+	srcVal := reflect.ValueOf(src)
+	dstVal := reflect.ValueOf(dst)
+	if dstVal.Kind() != reflect.Ptr || dstVal.IsNil() {
+		return &IndereferenceError{reflect.TypeOf(dst)}
+	}
+	
+	dstVal.Elem().Set(srcVal)
+	return nil
 }

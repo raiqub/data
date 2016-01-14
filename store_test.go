@@ -22,58 +22,77 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/raiqub/dot"
 )
 
 func testExpiration(store Store, t *testing.T) {
-	store.SetLifetime(time.Millisecond * 10)
-
-	store.Add("v1", nil)
-	store.Add("v2", nil)
-
-	if _, err := store.Get("v1"); err != nil {
-		t.Error("The value v1 was not stored")
-	}
-	if _, err := store.Get("v2"); err != nil {
-		t.Error("The value v2 was not stored")
+	testValues := map[string]int{
+		"v1": 3,
+		"v2": 6,
 	}
 
-	time.Sleep(time.Millisecond * 20)
+	store.SetLifetime(time.Second * 1)
 
-	if _, err := store.Get("v1"); err == nil {
-		t.Error("The value v1 was not expired")
+	if err := store.Add("v1", testValues["v1"]); err != nil {
+		t.Errorf("Could not add value: %v", err)
 	}
-	if _, err := store.Get("v2"); err == nil {
-		t.Error("The value v2 was not expired")
+	if err := store.Add("v2", testValues["v2"]); err != nil {
+		t.Errorf("Could not add value: %v", err)
+	}
+	var result int
+
+	if err := store.Get("v1", &result); err != nil {
+		t.Errorf("The value v1 was not stored: %v", err)
+	}
+	if err := store.Get("v2", &result); err != nil {
+		t.Errorf("The value v2 was not stored: %v", err)
 	}
 
-	if err := store.Delete("v1"); err == nil {
-		t.Error("The expired value v1 should not be removable")
+	time.Sleep(time.Second * 3)
+
+	err := store.Get("v1", &result)
+	if _, ok := err.(dot.InvalidKeyError); !ok {
+		t.Errorf("The value v1 was not expired: %v", err)
 	}
-	if err := store.Set("v2", nil); err == nil {
-		t.Error("The expired value v2 should not be changeable")
+	err = store.Get("v2", &result)
+	if _, ok := err.(dot.InvalidKeyError); !ok {
+		t.Errorf("The value v2 was not expired: %v", err)
+	}
+
+	err = store.Delete("v1")
+	if _, ok := err.(dot.InvalidKeyError); !ok {
+		t.Errorf("The expired value v1 should not be removable: %v", err)
+	}
+	err = store.Set("v2", nil)
+	if _, ok := err.(dot.InvalidKeyError); !ok {
+		t.Errorf("The expired value v2 should not be settable: %v", err)
 	}
 }
 
 func testValueHandling(store Store, t *testing.T) {
-	testValues := map[string]int{
+	type valueType struct {
+		Number int
+	}
+	testValues := map[string]interface{}{
 		"v1":  3,
 		"v2":  6,
-		"v3":  83679,
-		"v4":  2748,
-		"v5":  54,
-		"v6":  6,
-		"v7":  2,
-		"v8":  8,
-		"v9":  7,
-		"v10": 8,
+		"v3":  valueType{83679},
+		"v4":  valueType{2748},
+		"v5":  "lorem ipsum",
+		"v6":  6.5,
+		"v7":  876.49342,
+		"v8":  valueType{8},
+		"v9":  valueType{7},
+		"v10": "raiqub",
 	}
 	rmTestKey := "v5"
-	changeValues := map[string]int{
-		"v4": 5062,
-		"v9": 4099,
+	changeValues := map[string]valueType{
+		"v10": valueType{5062},
+		"v7":  valueType{4099},
 	}
 
-	store.SetLifetime(time.Millisecond * 10)
+	store.SetLifetime(time.Second * 1)
 
 	for k, v := range testValues {
 		err := store.Add(k, v)
@@ -88,19 +107,41 @@ func testValueHandling(store Store, t *testing.T) {
 	}
 
 	for k, v := range testValues {
-		v2, err := store.Get(k)
+		var err error
+		var output interface{}
+		switch k {
+		case "v1", "v2":
+			var ref int
+			err = store.Get(k, &ref)
+			output = ref
+		case "v3", "v4", "v8", "v9":
+			var ref valueType
+			err = store.Get(k, &ref)
+			output = ref
+		case "v5", "v10":
+			var ref string
+			err = store.Get(k, &ref)
+			output = ref
+		case "v6", "v7":
+			var ref float64
+			err = store.Get(k, &ref)
+			output = ref
+		}
 		if err != nil {
 			t.Errorf("The value %s could not be read", k)
 		}
-		if v2 != v {
-			t.Errorf("The value %s was stored incorrectly", k)
+		if output != v {
+			t.Errorf(
+				"The value %s was stored incorrectly. Expected '%v' got '%v'.",
+				k, v, output)
 		}
 	}
 
+	var result interface{}
 	if err := store.Delete(rmTestKey); err != nil {
 		t.Errorf("The value %s could not be removed", rmTestKey)
 	}
-	if _, err := store.Get(rmTestKey); err == nil {
+	if err := store.Get(rmTestKey, &result); err == nil {
 		t.Errorf("The removed value %s should not be retrieved", rmTestKey)
 	}
 	count, err = store.Count()
@@ -115,12 +156,14 @@ func testValueHandling(store Store, t *testing.T) {
 		}
 	}
 	for k, v := range changeValues {
-		v2, err := store.Get(k)
+		var v2 valueType
+		err := store.Get(k, &v2)
 		if err != nil {
 			t.Errorf("The value %s could not be read", k)
 		}
 		if v2 != v {
-			t.Errorf("The value %s was not changed", k)
+			t.Errorf("The value %s was not changed. Expected '%v' got '%v'.",
+				k, v, v2)
 		}
 	}
 }
@@ -131,7 +174,8 @@ func testKeyCollision(store Store, t *testing.T) {
 	if err := store.Add("v1", nil); err != nil {
 		t.Error("The value v1 could not be stored")
 	}
-	if err := store.Add("v1", nil); err == nil {
+	err := store.Add("v1", nil)
+	if _, ok := err.(dot.DuplicatedKeyError); !ok {
 		t.Error("The duplicated v1 could be stored")
 	}
 }
@@ -145,7 +189,8 @@ func testSetExpiration(store Store, t *testing.T) {
 
 	time.Sleep(time.Millisecond * 10)
 
-	if _, err := store.Get("v1"); err != nil {
+	var result interface{}
+	if err := store.Get("v1", &result); err != nil {
 		t.Error("The value v1 is expired before expected")
 	}
 }
@@ -158,7 +203,8 @@ func benchmarkValueCreation(store Store, b *testing.B) {
 		store.Add(strconv.Itoa(i), i)
 	}
 
+	var result interface{}
 	for i := 0; i < b.N; i++ {
-		store.Get(strconv.Itoa(i))
+		store.Get(strconv.Itoa(i), &result)
 	}
 }

@@ -119,18 +119,19 @@ func (s *MemStore) Delete(key string) error {
 }
 
 // Flush deletes any cached value into current instance.
-func (s *MemStore) Flush() {
+func (s *MemStore) Flush() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	s.values = make(map[string]Data)
+	return nil
 }
 
 // Get gets the value stored by specified key.
 //
 // Errors:
 // InvalidKeyError when requested key could not be found.
-func (s *MemStore) Get(key string) (interface{}, error) {
+func (s *MemStore) Get(key string, ref interface{}) error {
 	if s.gc() == dot.WriteLocked {
 		s.mutex.Unlock()
 		s.mutex.RLock()
@@ -139,14 +140,14 @@ func (s *MemStore) Get(key string) (interface{}, error) {
 
 	v, err := s.unsafeGet(key)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if !s.isTransient {
 		v.SetLifetime(s.lifetime)
 		v.Hit()
 	}
 
-	return v.Value(), nil
+	return setValue(v.Value(), ref)
 }
 
 // GC garbage collects all expired data.
@@ -236,3 +237,5 @@ func (s *MemStore) unsafeGet(key string) (Data, error) {
 	}
 	return v, nil
 }
+
+var _ Store = (*MemStore)(nil)
