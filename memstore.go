@@ -17,6 +17,7 @@
 package data
 
 import (
+	"strconv"
 	"sync"
 	"time"
 
@@ -210,11 +211,33 @@ func (s *MemStore) Set(key string, value interface{}) error {
 
 // SetLifetime modifies the lifetime for new stored items or for existing items
 // when it is read or written.
-func (s *MemStore) SetLifetime(d time.Duration) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+//
+// Errors:
+// NotSupportedError when ScopeNew is specified.
+func (s *MemStore) SetLifetime(d time.Duration, scope LifetimeScope) error {
+	switch scope {
+	case ScopeAll:
+		lckStatus := s.gc()
+		if lckStatus == dot.ReadLocked {
+			s.mutex.RUnlock()
+			s.mutex.Lock()
+		}
+		defer s.mutex.Unlock()
+
+		for _, v := range s.values {
+			v.SetLifetime(d)
+		}
+	case ScopeNewAndUpdated:
+		s.mutex.RLock()
+		defer s.mutex.RUnlock()
+	case ScopeNew:
+		return dot.NotSupportedError("ScopeNew")
+	default:
+		return dot.NotSupportedError(strconv.Itoa(int(scope)))
+	}
 
 	s.lifetime = d
+	return nil
 }
 
 // SetTransient defines whether should extends expiration of stored value when

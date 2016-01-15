@@ -1,4 +1,6 @@
 PASS
-BenchmarkMemStoreValueCreation-4  	  200000	     10225 ns/op	     112 B/op	       5 allocs/op
-BenchmarkMongoStoreValueCreation-4	   10000	    192308 ns/op	    5384 B/op	     126 allocs/op
-ok  	github.com/raiqub/data	31.785s
+BenchmarkMemStoreAddGet-4           	   10000	   1483796 ns/op	     223 B/op	       4 allocs/op
+BenchmarkMemStoreAddGetTransient-4  	   10000	   1588711 ns/op	     225 B/op	       4 allocs/op
+BenchmarkMongoStoreAddGet-4         	    3000	    359076 ns/op	   10176 B/op	     225 allocs/op
+BenchmarkMongoStoreAddGetTransient-4	   10000	    200738 ns/op	    5544 B/op	     129 allocs/op
+ok  	github.com/raiqub/data	85.031s

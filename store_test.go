@@ -32,7 +32,9 @@ func testExpiration(store Store, t *testing.T) {
 		"v2": 6,
 	}
 
-	store.SetLifetime(time.Second * 1)
+	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
 
 	if err := store.Add("v1", testValues["v1"]); err != nil {
 		t.Errorf("Could not add value: %v", err)
@@ -70,6 +72,94 @@ func testExpiration(store Store, t *testing.T) {
 	}
 }
 
+func testPostpone(store Store, t *testing.T) {
+	store.SetTransient(false)
+	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
+
+	if err := store.Add("v1", 45); err != nil {
+		t.Errorf("Could not add value: %v", err)
+	}
+	if err := store.Add("v2", 75); err != nil {
+		t.Errorf("Could not add value: %v", err)
+	}
+	if err := store.Add("v3", 86); err != nil {
+		t.Errorf("Could not add value: %v", err)
+	}
+
+	time.Sleep(time.Millisecond * 500)
+
+	var result int
+	if err := store.Get("v1", &result); err != nil {
+		t.Errorf("Could not get value: %v", err)
+	}
+	if err := store.Set("v2", result); err != nil {
+		t.Errorf("Could not set value: %v", err)
+	}
+	if err := store.Set("v3", result); err != nil {
+		t.Errorf("Could not set value: %v", err)
+	}
+	if err := store.Get("v3", &result); err != nil {
+		t.Errorf("Could not get value: %v", err)
+	}
+
+	time.Sleep(time.Millisecond * 600)
+	if err := store.Get("v1", &result); err != nil {
+		t.Errorf("Value expiration was not postponed: %v", err)
+	}
+	if err := store.Get("v2", &result); err != nil {
+		t.Errorf("Value expiration was not postponed: %v", err)
+	}
+	if err := store.Get("v3", &result); err != nil {
+		t.Errorf("Value expiration was not postponed: %v", err)
+	}
+}
+
+func testTransient(store Store, t *testing.T) {
+	store.SetTransient(true)
+	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
+
+	if err := store.Add("v1", 45); err != nil {
+		t.Errorf("Could not add value: %v", err)
+	}
+	if err := store.Add("v2", 75); err != nil {
+		t.Errorf("Could not add value: %v", err)
+	}
+	if err := store.Add("v3", 86); err != nil {
+		t.Errorf("Could not add value: %v", err)
+	}
+
+	time.Sleep(time.Millisecond * 500)
+
+	var result int
+	if err := store.Get("v1", &result); err != nil {
+		t.Errorf("Could not get value: %v", err)
+	}
+	if err := store.Set("v2", result); err != nil {
+		t.Errorf("Could not set value: %v", err)
+	}
+	if err := store.Set("v3", result); err != nil {
+		t.Errorf("Could not set value: %v", err)
+	}
+	if err := store.Get("v3", &result); err != nil {
+		t.Errorf("Could not get value: %v", err)
+	}
+
+	time.Sleep(time.Millisecond * 600)
+	if err := store.Get("v1", &result); err == nil {
+		t.Errorf("Value expiration should not be postponed: %s", "v1")
+	}
+	if err := store.Get("v2", &result); err == nil {
+		t.Errorf("Value expiration should not be postponed: %s", "v2")
+	}
+	if err := store.Get("v3", &result); err == nil {
+		t.Errorf("Value expiration should not be postponed: %s", "v3")
+	}
+}
+
 func testValueHandling(store Store, t *testing.T) {
 	type valueType struct {
 		Number int
@@ -92,7 +182,9 @@ func testValueHandling(store Store, t *testing.T) {
 		"v7":  {4099},
 	}
 
-	store.SetLifetime(time.Second * 1)
+	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
 
 	for k, v := range testValues {
 		err := store.Add(k, v)
@@ -169,7 +261,9 @@ func testValueHandling(store Store, t *testing.T) {
 }
 
 func testKeyCollision(store Store, t *testing.T) {
-	store.SetLifetime(time.Millisecond)
+	if err := store.SetLifetime(time.Millisecond, ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
 
 	if err := store.Add("v1", nil); err != nil {
 		t.Error("The value v1 could not be stored")
@@ -181,10 +275,14 @@ func testKeyCollision(store Store, t *testing.T) {
 }
 
 func testSetExpiration(store Store, t *testing.T) {
-	store.SetLifetime(time.Millisecond)
+	if err := store.SetLifetime(time.Millisecond, ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
 
 	store.Add("v1", nil)
-	store.SetLifetime(time.Second)
+	if err := store.SetLifetime(time.Second, ScopeNewAndUpdated); err != nil {
+		t.Skip("Set lifetime to new and updated items is not supported")
+	}
 	store.Set("v1", nil)
 
 	time.Sleep(time.Millisecond * 10)
@@ -195,17 +293,24 @@ func testSetExpiration(store Store, t *testing.T) {
 	}
 }
 
-func benchmarkValueCreation(store Store, b *testing.B) {
-	store.SetLifetime(time.Millisecond)
+func benchmarkAddGet(store Store, b *testing.B) {
+	if err := store.SetLifetime(time.Second*30, ScopeAll); err != nil {
+		b.Skip("Set lifetime to all items is not supported")
+	}
+
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		store.Add(strconv.Itoa(i), i)
+		if err := store.Add(strconv.Itoa(i), i); err != nil {
+			b.Errorf("Could not add a new value: %v", err)
+		}
 	}
 
-	var result interface{}
+	var result int
 	for i := 0; i < b.N; i++ {
-		store.Get(strconv.Itoa(i), &result)
+		if err := store.Get(strconv.Itoa(i), &result); err != nil {
+			b.Errorf("Could not get stored value: %v", err)
+		}
 	}
 
 	b.StopTimer()

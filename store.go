@@ -64,14 +64,34 @@ type Store interface {
 	// InvalidKeyError when requested key could not be found.
 	Set(key string, value interface{}) error
 
-	// SetLifetime modifies the lifetime for new stored items or for existing
-	// items when it is read or written.
-	SetLifetime(time.Duration)
+	// SetLifetime modifies the lifetime for a especified scope.
+	//
+	// Errors:
+	// NotSupportedError when current method cannot be implemented.
+	SetLifetime(time.Duration, LifetimeScope) error
 
 	// SetTransient defines whether should extends expiration of stored value
 	// when it is read or written.
 	SetTransient(bool)
 }
+
+// A LifetimeScope its a value which defines scope to apply new lifetime value.
+type LifetimeScope int
+
+const (
+	// ScopeAll defines that the new lifetime value should be applied for new
+	// and existing store items.
+	ScopeAll = LifetimeScope(0)
+
+	// ScopeNewAndUpdated defines that new lifetime value should be applied for
+	// new and updated store items.
+	// A store item is updated when it is read or written.
+	ScopeNewAndUpdated = LifetimeScope(1)
+
+	// ScopeNew defines that new lifetime value should be applied for new store
+	// items.
+	ScopeNew = LifetimeScope(2)
+)
 
 func setValue(src, dst interface{}) error {
 	if src == nil {

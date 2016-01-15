@@ -35,6 +35,12 @@ func TestMongoStore(t *testing.T) {
 	session, env := prepareMongoEnvironment(t)
 	defer env.Dispose()
 
+	//	session, err := openSession("mongodb://localhost/raiqub")
+	//	if err != nil {
+	//		t.Fatalf("Error opening a MongoDB session: %s\n", err)
+	//	}
+	//	defer session.Close()
+
 	store := NewMongoStore(session.DB(""), colName, time.Millisecond)
 	store.EnsureAccuracy(true)
 	testExpiration(store, t)
@@ -45,17 +51,31 @@ func TestMongoStore(t *testing.T) {
 	store.Flush()
 	testKeyCollision(store, t)
 
+	//store.Flush()
+	//testSetExpiration(store, t)
+
 	store.Flush()
-	testSetExpiration(store, t)
+	testPostpone(store, t)
+
+	store.Flush()
+	testTransient(store, t)
 }
 
-func BenchmarkMongoStoreValueCreation(b *testing.B) {
+func BenchmarkMongoStoreAddGet(b *testing.B) {
 	session, env := prepareMongoEnvironment(b)
 	defer env.Dispose()
 
-	store := NewMongoStore(session.DB(""), colName, time.Millisecond)
-	store.EnsureAccuracy(true)
-	benchmarkValueCreation(store, b)
+	store := NewMongoStore(session.DB(""), colName, time.Second)
+	benchmarkAddGet(store, b)
+}
+
+func BenchmarkMongoStoreAddGetTransient(b *testing.B) {
+	session, env := prepareMongoEnvironment(b)
+	defer env.Dispose()
+
+	store := NewMongoStore(session.DB(""), colName, time.Second)
+	store.SetTransient(true)
+	benchmarkAddGet(store, b)
 }
 
 func openSession(url string) (*mgo.Session, error) {

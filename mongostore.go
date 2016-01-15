@@ -17,6 +17,7 @@
 package data
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/raiqub/dot"
@@ -34,17 +35,6 @@ const (
 	// duplicated key.
 	MongoDupKeyErrorCode = 11000
 )
-
-type mongoData struct {
-	CreatedAt time.Time `bson:"at"`
-	Key       string    `bson:"_id"`
-	Value     string    `bson:"val"`
-}
-
-// IsExpired returns whether current value is expired.
-func (d *mongoData) IsExpired(lifetime time.Duration) bool {
-	return time.Now().After(d.CreatedAt.Add(lifetime))
-}
 
 // A MongoStore provides a MongoDB-backed key:value cache that expires after
 // defined duration of time.
@@ -84,9 +74,11 @@ func NewMongoStore(db *mgo.Database, name string, d time.Duration) *MongoStore {
 
 // Add adds a new key:value to current store.
 //
-// Errors:
-// 	- dot.DuplicatedKeyError when requested key already exists.
-// 	- mgo.LastError when a error from MongoDB is triggered.
+// Errors
+//
+// dot.DuplicatedKeyError when requested key already exists.
+//
+// mgo.LastError when a error from MongoDB is triggered.
 func (s *MongoStore) Add(key string, value interface{}) error {
 	b, err := msgpack.Marshal(value)
 	if err != nil {
@@ -98,8 +90,8 @@ func (s *MongoStore) Add(key string, value interface{}) error {
 		key,
 		string(b),
 	}
-	err = s.col.Insert(&doc)
-	if err != nil {
+
+	if err := s.col.Insert(&doc); err != nil {
 		mgoerr := err.(*mgo.LastError)
 		if mgoerr.Code == MongoDupKeyErrorCode {
 			return dot.DuplicatedKeyError(key)
@@ -112,15 +104,20 @@ func (s *MongoStore) Add(key string, value interface{}) error {
 }
 
 // Count gets the number of stored values by current instance.
+//
+// Errors:
+// mgo.LastError when a error from MongoDB is triggered.
 func (s *MongoStore) Count() (int, error) {
 	return s.col.Count()
 }
 
 // Delete deletes the specified value.
 //
-// Errors:
-// 	- dot.InvalidKeyError when requested key already exists.
-// 	- mgo.LastError when a error from MongoDB is triggered.
+// Errors
+//
+// dot.InvalidKeyError when requested key already exists.
+//
+// mgo.LastError when a error from MongoDB is triggered.
 func (s *MongoStore) Delete(key string) error {
 	if s.ensureAccuracy {
 		if err := s.testExpiration(key); err != nil {
@@ -146,7 +143,7 @@ func (s *MongoStore) EnsureAccuracy(value bool) {
 // Flush deletes any cached value into current instance.
 //
 // Errors:
-// 	- mgo.LastError when a error from MongoDB is triggered.
+// mgo.LastError when a error from MongoDB is triggered.
 func (s *MongoStore) Flush() error {
 	_, err := s.col.RemoveAll(bson.M{})
 	return err
@@ -158,10 +155,28 @@ func (s *MongoStore) GC() {}
 // Get gets the value stored by specified key and stores the result in the
 // value pointed to by ref.
 //
-// Errors:
-// 	- dot.InvalidKeyError when requested key already exists.
-// 	- mgo.LastError when a error from MongoDB is triggered.
+// Errors
+//
+// dot.InvalidKeyError when requested key already exists.
+//
+// mgo.LastError when a error from MongoDB is triggered.
 func (s *MongoStore) Get(key string, ref interface{}) error {
+	if s.ensureAccuracy {
+		if err := s.testExpiration(key); err != nil {
+			return err
+		}
+	}
+
+	if !s.isTransient {
+		query := bson.M{"$currentDate": bson.M{"at": true}}
+		if err := s.col.UpdateId(key, query); err != nil {
+			if err == mgo.ErrNotFound {
+				return dot.InvalidKeyError(key)
+			}
+			return err
+		}
+	}
+
 	doc := mongoData{
 		time.Time{},
 		"",
@@ -175,10 +190,6 @@ func (s *MongoStore) Get(key string, ref interface{}) error {
 		return err
 	}
 
-	if doc.IsExpired(s.lifetime) {
-		return dot.InvalidKeyError(key)
-	}
-
 	err = msgpack.Unmarshal([]byte(doc.Value), &ref)
 	if err != nil {
 		return err
@@ -189,19 +200,20 @@ func (s *MongoStore) Get(key string, ref interface{}) error {
 
 // Set sets the value of specified key.
 //
-// Errors:
-// 	- dot.InvalidKeyError when requested key already exists.
-// 	- mgo.LastError when a error from MongoDB is triggered.
+// Errors
+//
+// dot.InvalidKeyError when requested key already exists.
+//
+// mgo.LastError when a error from MongoDB is triggered.
 func (s *MongoStore) Set(key string, value interface{}) error {
 	b, err := msgpack.Marshal(value)
 	if err != nil {
 		return err
 	}
 
-	doc := mongoData{
-		time.Now(),
-		key,
-		string(b),
+	query := bson.M{"$set": bson.M{"val": string(b)}}
+	if !s.isTransient {
+		query["$currentDate"] = bson.M{"at": true}
 	}
 
 	if s.ensureAccuracy {
@@ -210,8 +222,7 @@ func (s *MongoStore) Set(key string, value interface{}) error {
 		}
 	}
 
-	err = s.col.UpdateId(key, &doc)
-	if err != nil {
+	if err := s.col.UpdateId(key, query); err != nil {
 		if err == mgo.ErrNotFound {
 			return dot.InvalidKeyError(key)
 		}
@@ -223,19 +234,31 @@ func (s *MongoStore) Set(key string, value interface{}) error {
 
 // SetLifetime modifies the lifetime for new and existing stored items.
 //
-// BUG(skarllot): Should behave as defined by interface.
-func (s *MongoStore) SetLifetime(d time.Duration) {
-	s.col.DropIndexName(indexName)
-	s.lifetime = d
+// Errors:
+// NotSupportedError when ScopeNewAndUpdate or ScopeNew is specified.
+func (s *MongoStore) SetLifetime(d time.Duration, scope LifetimeScope) error {
+	switch scope {
+	case ScopeAll:
+		s.col.DropIndexName(indexName)
 
-	index := mgo.Index{
-		Key:         []string{timeFieldName},
-		Unique:      false,
-		Background:  true,
-		ExpireAfter: d,
-		Name:        indexName,
+		index := mgo.Index{
+			Key:         []string{timeFieldName},
+			Unique:      false,
+			Background:  true,
+			ExpireAfter: d,
+			Name:        indexName,
+		}
+		s.col.EnsureIndex(index)
+	case ScopeNewAndUpdated:
+		return dot.NotSupportedError("ScopeNewAndUpdated")
+	case ScopeNew:
+		return dot.NotSupportedError("ScopeNew")
+	default:
+		return dot.NotSupportedError(strconv.Itoa(int(scope)))
 	}
-	s.col.EnsureIndex(index)
+
+	s.lifetime = d
+	return nil
 }
 
 // SetTransient defines whether should extends expiration of stored value

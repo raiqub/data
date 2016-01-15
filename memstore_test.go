@@ -32,9 +32,21 @@ func TestMemStore(t *testing.T) {
 
 	store.Flush()
 	testSetExpiration(store, t)
+
+	store.Flush()
+	testPostpone(store, t)
+
+	store.Flush()
+	testTransient(store, t)
 }
 
-func BenchmarkMemStoreValueCreation(b *testing.B) {
+func BenchmarkMemStoreAddGet(b *testing.B) {
 	store := NewCacheStore(0)
-	benchmarkValueCreation(store, b)
+	benchmarkAddGet(store, b)
+}
+
+func BenchmarkMemStoreAddGetTransient(b *testing.B) {
+	store := NewCacheStore(0)
+	store.SetTransient(true)
+	benchmarkAddGet(store, b)
 }
