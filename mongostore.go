@@ -20,9 +20,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/raiqub/dot"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/raiqub/dot.v1"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 

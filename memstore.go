@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/raiqub/dot"
+	"gopkg.in/raiqub/dot.v1"
 )
 
 // A MemStore provides in-memory key:value cache that expires after defined

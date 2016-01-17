@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/raiqub/dot"
 	"github.com/skarllot/raiqub/test"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/raiqub/dot.v1"
 )
 
 const (

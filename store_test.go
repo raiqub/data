@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/raiqub/dot"
+	"gopkg.in/raiqub/dot.v1"
 )
 
 func testExpiration(store Store, t *testing.T) {

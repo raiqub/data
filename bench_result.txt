@@ -1,6 +1,6 @@
 PASS
-BenchmarkMemStoreAddGet-4           	   10000	   1483796 ns/op	     223 B/op	       4 allocs/op
-BenchmarkMemStoreAddGetTransient-4  	   10000	   1588711 ns/op	     225 B/op	       4 allocs/op
-BenchmarkMongoStoreAddGet-4         	    3000	    359076 ns/op	   10176 B/op	     225 allocs/op
-BenchmarkMongoStoreAddGetTransient-4	   10000	    200738 ns/op	    5544 B/op	     129 allocs/op
-ok  	github.com/raiqub/data	85.031s
+BenchmarkMemStoreAddGet-4           	   10000	   1421344 ns/op	     224 B/op	       4 allocs/op
+BenchmarkMemStoreAddGetTransient-4  	   10000	   1563181 ns/op	     223 B/op	       4 allocs/op
+BenchmarkMongoStoreAddGet-4         	    5000	    309726 ns/op	   10177 B/op	     225 allocs/op
+BenchmarkMongoStoreAddGetTransient-4	   10000	    169102 ns/op	    5544 B/op	     129 allocs/op
+ok  	github.com/raiqub/data	81.040s
