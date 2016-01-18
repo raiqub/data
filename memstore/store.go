@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package memdata
+package memstore
 
 import (
 	"reflect"
@@ -22,40 +22,31 @@ import (
 	"sync"
 	"time"
 
-	"github.com/raiqub/data"
+	"gopkg.in/raiqub/data.v0"
 	"gopkg.in/raiqub/dot.v1"
 )
 
-// A MemStore provides in-memory key:value cache that expires after defined
+// A Store provides in-memory key:value cache that expires after defined
 // duration of time.
 //
 // It is a implementation of Store interface.
-type MemStore struct {
+type Store struct {
 	values      map[string]Data
 	lifetime    time.Duration
 	isTransient bool
 	mutex       sync.RWMutex
 }
 
-// NewCacheStore creates a new instance of MemStore and defines the default
-// lifetime for new cached items. The cached items lifetime are renewed when it
-// is read or written.
-func NewCacheStore(d time.Duration) *MemStore {
-	return &MemStore{
+// New creates a new instance of in-memory Store and defines the default
+// lifetime for new stored items.
+//
+// If it is specified to not transient then the stored items lifetime are
+// renewed when it is read or written; Otherwise, it is never renewed.
+func New(d time.Duration, isTransient bool) *Store {
+	return &Store{
 		values:      make(map[string]Data),
 		lifetime:    d,
-		isTransient: false,
-	}
-}
-
-// NewTransientStore creates a new instance of MemStore and defines the default
-// lifetime for new stored items. The stored items lifetime are not renewed when
-// it is read or written.
-func NewTransientStore(d time.Duration) *MemStore {
-	return &MemStore{
-		values:      make(map[string]Data),
-		lifetime:    d,
-		isTransient: true,
+		isTransient: isTransient,
 	}
 }
 
@@ -63,7 +54,7 @@ func NewTransientStore(d time.Duration) *MemStore {
 //
 // Errors:
 // DuplicatedKeyError when requested key already exists.
-func (s *MemStore) Add(key string, value interface{}) error {
+func (s *Store) Add(key string, value interface{}) error {
 	lckStatus := s.gc()
 
 	data := NewMemData(s.lifetime, value)
@@ -83,7 +74,7 @@ func (s *MemStore) Add(key string, value interface{}) error {
 }
 
 // Count gets the number of stored values by current instance.
-func (s *MemStore) Count() (int, error) {
+func (s *Store) Count() (int, error) {
 	if s.gc() == dot.WriteLocked {
 		defer s.mutex.Unlock()
 	} else {
@@ -97,7 +88,7 @@ func (s *MemStore) Count() (int, error) {
 //
 // Errors:
 // InvalidKeyError when requested key could not be found.
-func (s *MemStore) Delete(key string) error {
+func (s *Store) Delete(key string) error {
 	lckStatus := s.gc()
 
 	_, err := s.unsafeGet(key)
@@ -122,7 +113,7 @@ func (s *MemStore) Delete(key string) error {
 }
 
 // Flush deletes any cached value into current instance.
-func (s *MemStore) Flush() error {
+func (s *Store) Flush() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -134,7 +125,7 @@ func (s *MemStore) Flush() error {
 //
 // Errors:
 // InvalidKeyError when requested key could not be found.
-func (s *MemStore) Get(key string, ref interface{}) error {
+func (s *Store) Get(key string, ref interface{}) error {
 	if s.gc() == dot.WriteLocked {
 		s.mutex.Unlock()
 		s.mutex.RLock()
@@ -154,7 +145,7 @@ func (s *MemStore) Get(key string, ref interface{}) error {
 }
 
 // GC garbage collects all expired data.
-func (s *MemStore) GC() {
+func (s *Store) GC() {
 	lckStatus := s.gc()
 
 	if lckStatus == dot.ReadLocked {
@@ -164,7 +155,7 @@ func (s *MemStore) GC() {
 	}
 }
 
-func (s *MemStore) gc() dot.LockStatus {
+func (s *Store) gc() dot.LockStatus {
 	writeLocked := false
 	s.mutex.RLock()
 	for i := range s.values {
@@ -190,7 +181,7 @@ func (s *MemStore) gc() dot.LockStatus {
 //
 // Errors:
 // InvalidKeyError when requested key could not be found.
-func (s *MemStore) Set(key string, value interface{}) error {
+func (s *Store) Set(key string, value interface{}) error {
 	if s.gc() == dot.WriteLocked {
 		s.mutex.Unlock()
 		s.mutex.RLock()
@@ -216,7 +207,7 @@ func (s *MemStore) Set(key string, value interface{}) error {
 //
 // Errors:
 // NotSupportedError when ScopeNew is specified.
-func (s *MemStore) SetLifetime(d time.Duration, scope data.LifetimeScope) error {
+func (s *Store) SetLifetime(d time.Duration, scope data.LifetimeScope) error {
 	switch scope {
 	case data.ScopeAll:
 		lckStatus := s.gc()
@@ -244,7 +235,7 @@ func (s *MemStore) SetLifetime(d time.Duration, scope data.LifetimeScope) error 
 
 // SetTransient defines whether should extends expiration of stored value when
 // it is read or written.
-func (s *MemStore) SetTransient(value bool) {
+func (s *Store) SetTransient(value bool) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -255,7 +246,7 @@ func (s *MemStore) SetTransient(value bool) {
 //
 // Errors:
 // InvalidKeyError when requested key could not be found.
-func (s *MemStore) unsafeGet(key string) (Data, error) {
+func (s *Store) unsafeGet(key string) (Data, error) {
 	v, ok := s.values[key]
 	if !ok {
 		return nil, dot.InvalidKeyError(key)
@@ -278,4 +269,4 @@ func setValue(src, dst interface{}) error {
 	return nil
 }
 
-var _ data.Store = (*MemStore)(nil)
+var _ data.Store = (*Store)(nil)

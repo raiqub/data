@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/raiqub/data"
+	"gopkg.in/raiqub/data.v0"
 	"gopkg.in/raiqub/dot.v1"
 )
 

@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package memdata
+package memstore
 
-import (
-	"time"
-)
+import "time"
 
 // A Data represents a value stored in-memory.
 type Data interface {

@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package memdata
+package memstore
 
 import (
 	"testing"
@@ -25,7 +25,7 @@ import (
 )
 
 func TestMemStore(t *testing.T) {
-	store := NewCacheStore(0)
+	store := New(0, false)
 	testdata.TestExpiration(store, t)
 
 	store.Flush()
@@ -45,12 +45,11 @@ func TestMemStore(t *testing.T) {
 }
 
 func BenchmarkMemStoreAddGet(b *testing.B) {
-	store := NewCacheStore(0)
+	store := New(0, false)
 	testdata.BenchmarkAddGet(store, b)
 }
 
 func BenchmarkMemStoreAddGetTransient(b *testing.B) {
-	store := NewCacheStore(0)
-	store.SetTransient(true)
+	store := New(0, true)
 	testdata.BenchmarkAddGet(store, b)
 }

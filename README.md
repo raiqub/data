@@ -14,7 +14,7 @@ implementations.
 To install raiqub/data library run the following command:
 
 ~~~ bash
-go get github.com/raiqub/data
+go get gopkg.in/raiqub/data.v0
 ~~~
 
 

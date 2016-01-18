@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package memdata
+package memstore
 
-import (
-	"time"
-)
+import "time"
 
 // A MemData represents a in-memory value whereof has a defined lifetime.
 type MemData struct {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package mgodata
+package mongostore
 
 import (
 	"fmt"
@@ -42,7 +42,7 @@ func TestMongoStore(t *testing.T) {
 	//	}
 	//	defer session.Close()
 
-	store := NewMongoStore(session.DB(""), colName, time.Millisecond)
+	store := New(session.DB(""), colName, time.Millisecond)
 	store.EnsureAccuracy(true)
 	testdata.TestExpiration(store, t)
 
@@ -66,7 +66,7 @@ func BenchmarkMongoStoreAddGet(b *testing.B) {
 	session, env := prepareMongoEnvironment(b)
 	defer env.Dispose()
 
-	store := NewMongoStore(session.DB(""), colName, time.Second)
+	store := New(session.DB(""), colName, time.Second)
 	testdata.BenchmarkAddGet(store, b)
 }
 
@@ -74,7 +74,7 @@ func BenchmarkMongoStoreAddGetTransient(b *testing.B) {
 	session, env := prepareMongoEnvironment(b)
 	defer env.Dispose()
 
-	store := NewMongoStore(session.DB(""), colName, time.Second)
+	store := New(session.DB(""), colName, time.Second)
 	store.SetTransient(true)
 	testdata.BenchmarkAddGet(store, b)
 }

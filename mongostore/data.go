@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package mgodata
+package mongostore
 
 import "time"
 
-type mongoData struct {
+// A Data represents a document stored on MongoDB collection.
+type Data struct {
 	CreatedAt time.Time `bson:"at"`
 	Key       string    `bson:"_id"`
 	Value     string    `bson:"val"`
 }
 
 // IsExpired returns whether current value is expired.
-func (d *mongoData) IsExpired(lifetime time.Duration) bool {
+func (d *Data) IsExpired(lifetime time.Duration) bool {
 	return time.Now().After(d.CreatedAt.Add(lifetime))
 }
