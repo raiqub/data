@@ -16,37 +16,41 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package data
+package memdata
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/raiqub/data/testdata"
+)
 
 func TestMemStore(t *testing.T) {
 	store := NewCacheStore(0)
-	testExpiration(store, t)
+	testdata.TestExpiration(store, t)
 
 	store.Flush()
-	testValueHandling(store, t)
+	testdata.TestValueHandling(store, t)
 
 	store.Flush()
-	testKeyCollision(store, t)
+	testdata.TestKeyCollision(store, t)
 
 	store.Flush()
-	testSetExpiration(store, t)
+	testdata.TestSetExpiration(store, t)
 
 	store.Flush()
-	testPostpone(store, t)
+	testdata.TestPostpone(store, t)
 
 	store.Flush()
-	testTransient(store, t)
+	testdata.TestTransient(store, t)
 }
 
 func BenchmarkMemStoreAddGet(b *testing.B) {
 	store := NewCacheStore(0)
-	benchmarkAddGet(store, b)
+	testdata.BenchmarkAddGet(store, b)
 }
 
 func BenchmarkMemStoreAddGetTransient(b *testing.B) {
 	store := NewCacheStore(0)
 	store.SetTransient(true)
-	benchmarkAddGet(store, b)
+	testdata.BenchmarkAddGet(store, b)
 }

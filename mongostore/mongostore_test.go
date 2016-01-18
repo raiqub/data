@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package data
+package mgodata
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/raiqub/data/testdata"
 	"github.com/skarllot/raiqub/test"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/raiqub/dot.v1"
@@ -43,22 +44,22 @@ func TestMongoStore(t *testing.T) {
 
 	store := NewMongoStore(session.DB(""), colName, time.Millisecond)
 	store.EnsureAccuracy(true)
-	testExpiration(store, t)
+	testdata.TestExpiration(store, t)
 
 	store.Flush()
-	testValueHandling(store, t)
+	testdata.TestValueHandling(store, t)
 
 	store.Flush()
-	testKeyCollision(store, t)
+	testdata.TestKeyCollision(store, t)
 
 	//store.Flush()
-	//testSetExpiration(store, t)
+	//testdata.TestSetExpiration(store, t)
 
 	store.Flush()
-	testPostpone(store, t)
+	testdata.TestPostpone(store, t)
 
 	store.Flush()
-	testTransient(store, t)
+	testdata.TestTransient(store, t)
 }
 
 func BenchmarkMongoStoreAddGet(b *testing.B) {
@@ -66,7 +67,7 @@ func BenchmarkMongoStoreAddGet(b *testing.B) {
 	defer env.Dispose()
 
 	store := NewMongoStore(session.DB(""), colName, time.Second)
-	benchmarkAddGet(store, b)
+	testdata.BenchmarkAddGet(store, b)
 }
 
 func BenchmarkMongoStoreAddGetTransient(b *testing.B) {
@@ -75,7 +76,7 @@ func BenchmarkMongoStoreAddGetTransient(b *testing.B) {
 
 	store := NewMongoStore(session.DB(""), colName, time.Second)
 	store.SetTransient(true)
-	benchmarkAddGet(store, b)
+	testdata.BenchmarkAddGet(store, b)
 }
 
 func openSession(url string) (*mgo.Session, error) {

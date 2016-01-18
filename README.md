@@ -1,7 +1,7 @@
 # Data
 
-Data is a library for the [Go Programming Language][go]. It provides
-implementation of data types.
+Data is a library for the [Go Programming Language][go]. It provides data store
+implementations.
 
 ## Status
 
@@ -11,7 +11,7 @@ implementation of data types.
 
 ## Installation
 
-To install Raiqub/data library run the following command:
+To install raiqub/data library run the following command:
 
 ~~~ bash
 go get github.com/raiqub/data

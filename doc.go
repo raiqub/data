@@ -15,7 +15,7 @@
  */
 
 /*
-Package data provides some data implementations.
+Package data provides data store implementations.
 
 MemStore
 

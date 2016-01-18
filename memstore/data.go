@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package data
+package memdata
 
 import (
 	"time"

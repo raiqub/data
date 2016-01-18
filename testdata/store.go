@@ -16,23 +16,24 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package data
+package testdata
 
 import (
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/raiqub/data"
 	"gopkg.in/raiqub/dot.v1"
 )
 
-func testExpiration(store Store, t *testing.T) {
+func TestExpiration(store data.Store, t *testing.T) {
 	testValues := map[string]int{
 		"v1": 3,
 		"v2": 6,
 	}
 
-	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+	if err := store.SetLifetime(time.Second*1, data.ScopeAll); err != nil {
 		t.Skip("Set lifetime to all items is not supported")
 	}
 
@@ -72,9 +73,9 @@ func testExpiration(store Store, t *testing.T) {
 	}
 }
 
-func testPostpone(store Store, t *testing.T) {
+func TestPostpone(store data.Store, t *testing.T) {
 	store.SetTransient(false)
-	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+	if err := store.SetLifetime(time.Second*1, data.ScopeAll); err != nil {
 		t.Skip("Set lifetime to all items is not supported")
 	}
 
@@ -116,9 +117,9 @@ func testPostpone(store Store, t *testing.T) {
 	}
 }
 
-func testTransient(store Store, t *testing.T) {
+func TestTransient(store data.Store, t *testing.T) {
 	store.SetTransient(true)
-	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+	if err := store.SetLifetime(time.Second*1, data.ScopeAll); err != nil {
 		t.Skip("Set lifetime to all items is not supported")
 	}
 
@@ -160,7 +161,7 @@ func testTransient(store Store, t *testing.T) {
 	}
 }
 
-func testValueHandling(store Store, t *testing.T) {
+func TestValueHandling(store data.Store, t *testing.T) {
 	type valueType struct {
 		Number int
 	}
@@ -182,7 +183,7 @@ func testValueHandling(store Store, t *testing.T) {
 		"v7":  {4099},
 	}
 
-	if err := store.SetLifetime(time.Second*1, ScopeAll); err != nil {
+	if err := store.SetLifetime(time.Second*1, data.ScopeAll); err != nil {
 		t.Skip("Set lifetime to all items is not supported")
 	}
 
@@ -260,8 +261,8 @@ func testValueHandling(store Store, t *testing.T) {
 	}
 }
 
-func testKeyCollision(store Store, t *testing.T) {
-	if err := store.SetLifetime(time.Millisecond, ScopeAll); err != nil {
+func TestKeyCollision(store data.Store, t *testing.T) {
+	if err := store.SetLifetime(time.Millisecond, data.ScopeAll); err != nil {
 		t.Skip("Set lifetime to all items is not supported")
 	}
 
@@ -274,13 +275,13 @@ func testKeyCollision(store Store, t *testing.T) {
 	}
 }
 
-func testSetExpiration(store Store, t *testing.T) {
-	if err := store.SetLifetime(time.Millisecond, ScopeAll); err != nil {
+func TestSetExpiration(store data.Store, t *testing.T) {
+	if err := store.SetLifetime(time.Millisecond, data.ScopeAll); err != nil {
 		t.Skip("Set lifetime to all items is not supported")
 	}
 
 	store.Add("v1", nil)
-	if err := store.SetLifetime(time.Second, ScopeNewAndUpdated); err != nil {
+	if err := store.SetLifetime(time.Second, data.ScopeNewAndUpdated); err != nil {
 		t.Skip("Set lifetime to new and updated items is not supported")
 	}
 	store.Set("v1", nil)
@@ -293,8 +294,8 @@ func testSetExpiration(store Store, t *testing.T) {
 	}
 }
 
-func benchmarkAddGet(store Store, b *testing.B) {
-	if err := store.SetLifetime(time.Second*30, ScopeAll); err != nil {
+func BenchmarkAddGet(store data.Store, b *testing.B) {
+	if err := store.SetLifetime(time.Second*30, data.ScopeAll); err != nil {
 		b.Skip("Set lifetime to all items is not supported")
 	}
 

@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package data
+package mgodata
 
 import (
 	"strconv"
 	"time"
 
+	"github.com/raiqub/data"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/raiqub/dot.v1"
@@ -236,9 +237,9 @@ func (s *MongoStore) Set(key string, value interface{}) error {
 //
 // Errors:
 // NotSupportedError when ScopeNewAndUpdate or ScopeNew is specified.
-func (s *MongoStore) SetLifetime(d time.Duration, scope LifetimeScope) error {
+func (s *MongoStore) SetLifetime(d time.Duration, scope data.LifetimeScope) error {
 	switch scope {
-	case ScopeAll:
+	case data.ScopeAll:
 		s.col.DropIndexName(indexName)
 
 		index := mgo.Index{
@@ -249,9 +250,9 @@ func (s *MongoStore) SetLifetime(d time.Duration, scope LifetimeScope) error {
 			Name:        indexName,
 		}
 		s.col.EnsureIndex(index)
-	case ScopeNewAndUpdated:
+	case data.ScopeNewAndUpdated:
 		return dot.NotSupportedError("ScopeNewAndUpdated")
-	case ScopeNew:
+	case data.ScopeNew:
 		return dot.NotSupportedError("ScopeNew")
 	default:
 		return dot.NotSupportedError(strconv.Itoa(int(scope)))
@@ -288,4 +289,4 @@ func (s *MongoStore) testExpiration(key string) error {
 	return nil
 }
 
-var _ Store = (*MongoStore)(nil)
+var _ data.Store = (*MongoStore)(nil)

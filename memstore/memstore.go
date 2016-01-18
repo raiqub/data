@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package data
+package memdata
 
 import (
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/raiqub/data"
 	"gopkg.in/raiqub/dot.v1"
 )
 
@@ -214,9 +216,9 @@ func (s *MemStore) Set(key string, value interface{}) error {
 //
 // Errors:
 // NotSupportedError when ScopeNew is specified.
-func (s *MemStore) SetLifetime(d time.Duration, scope LifetimeScope) error {
+func (s *MemStore) SetLifetime(d time.Duration, scope data.LifetimeScope) error {
 	switch scope {
-	case ScopeAll:
+	case data.ScopeAll:
 		lckStatus := s.gc()
 		if lckStatus == dot.ReadLocked {
 			s.mutex.RUnlock()
@@ -227,10 +229,10 @@ func (s *MemStore) SetLifetime(d time.Duration, scope LifetimeScope) error {
 		for _, v := range s.values {
 			v.SetLifetime(d)
 		}
-	case ScopeNewAndUpdated:
+	case data.ScopeNewAndUpdated:
 		s.mutex.RLock()
 		defer s.mutex.RUnlock()
-	case ScopeNew:
+	case data.ScopeNew:
 		return dot.NotSupportedError("ScopeNew")
 	default:
 		return dot.NotSupportedError(strconv.Itoa(int(scope)))
@@ -261,4 +263,19 @@ func (s *MemStore) unsafeGet(key string) (Data, error) {
 	return v, nil
 }
 
-var _ Store = (*MemStore)(nil)
+func setValue(src, dst interface{}) error {
+	if src == nil {
+		return nil
+	}
+
+	srcVal := reflect.ValueOf(src)
+	dstVal := reflect.ValueOf(dst)
+	if dstVal.Kind() != reflect.Ptr || dstVal.IsNil() {
+		return &data.IndereferenceError{Type: reflect.TypeOf(dst)}
+	}
+
+	dstVal.Elem().Set(srcVal)
+	return nil
+}
+
+var _ data.Store = (*MemStore)(nil)
