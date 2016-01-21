@@ -61,7 +61,7 @@ The tests can be run via the provided Bash script:
 
 ## License
 
-raiqub/dot is made available under the [Apache Version 2.0 License][license].
+raiqub/data is made available under the [Apache Version 2.0 License][license].
 
 [go]: http://golang.org/
 [doc]: https://godoc.org/gopkg.in/raiqub/data.v0
