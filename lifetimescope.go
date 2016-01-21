@@ -25,8 +25,8 @@ const (
 	ScopeAll = LifetimeScope(0)
 
 	// ScopeNewAndUpdated defines that new lifetime value should be applied for
-	// new and updated store items.
-	// A store item is updated when it is read or written.
+	// new and future updates on stored items.
+	// A stored item is updated when it is read or written.
 	ScopeNewAndUpdated = LifetimeScope(1)
 
 	// ScopeNew defines that new lifetime value should be applied for new store

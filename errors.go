@@ -27,6 +27,7 @@ type IndereferenceError struct {
 	Type reflect.Type
 }
 
+// Error returns string representation of current instance error.
 func (e *IndereferenceError) Error() string {
 	if e.Type == nil {
 		return "cannot unwrap to nil"
