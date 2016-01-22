@@ -17,7 +17,6 @@
 package memstore
 
 import (
-	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -65,7 +64,10 @@ func (s *Store) Add(key string, value interface{}) error {
 	}
 	defer s.mutex.Unlock()
 
-	data := NewMemData(s.lifetime, value)
+	data, err := NewMemData(s.lifetime, value)
+	if err != nil {
+		return err
+	}
 
 	if _, ok := s.values[key]; ok {
 		return dot.DuplicatedKeyError(key)
@@ -151,7 +153,7 @@ func (s *Store) Get(key string, ref interface{}) error {
 		v.Hit()
 	}
 
-	return setValue(v.Value(), ref)
+	return v.Value(ref)
 }
 
 // GC garbage collects all expired data.
@@ -273,21 +275,6 @@ func (s *Store) unsafeGet(key string) (Data, error) {
 		return nil, dot.InvalidKeyError(key)
 	}
 	return v, nil
-}
-
-func setValue(src, dst interface{}) error {
-	if src == nil {
-		return nil
-	}
-
-	srcVal := reflect.ValueOf(src)
-	dstVal := reflect.ValueOf(dst)
-	if dstVal.Kind() != reflect.Ptr || dstVal.IsNil() {
-		return &data.IndereferenceError{Type: reflect.TypeOf(dst)}
-	}
-
-	dstVal.Elem().Set(srcVal)
-	return nil
 }
 
 var _ data.Store = (*Store)(nil)

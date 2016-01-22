@@ -31,11 +31,11 @@ type Data interface {
 	Hit()
 
 	// Value of current instance.
-	Value() interface{}
+	Value(ref interface{}) error
 
 	// SetLifetime sets the lifetime duration for current instance.
 	SetLifetime(time.Duration)
 
 	// SetValue sets the value of current instance.
-	SetValue(interface{})
+	SetValue(interface{}) error
 }

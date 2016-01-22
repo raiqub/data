@@ -16,22 +16,31 @@
 
 package memstore
 
-import "time"
+import (
+	"time"
+
+	"gopkg.in/vmihailenco/msgpack.v2"
+)
 
 // A MemData represents a in-memory value whereof has a defined lifetime.
 type MemData struct {
 	expireAt time.Time
 	lifetime time.Duration
-	value    interface{}
+	value    []byte
 }
 
 // NewMemData creates a new in-memory data.
-func NewMemData(lifetime time.Duration, value interface{}) *MemData {
+func NewMemData(lifetime time.Duration, value interface{}) (*MemData, error) {
+	b, err := msgpack.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
 	return &MemData{
 		expireAt: time.Now().Add(lifetime),
 		lifetime: lifetime,
-		value:    value,
-	}
+		value:    b,
+	}, nil
 }
 
 // Delete removes current data.
@@ -51,8 +60,13 @@ func (i *MemData) Hit() {
 }
 
 // Value of current instance.
-func (i *MemData) Value() interface{} {
-	return i.value
+func (i *MemData) Value(ref interface{}) error {
+	err := msgpack.Unmarshal(i.value, &ref)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetLifetime sets the lifetime duration for current instance.
@@ -61,6 +75,12 @@ func (i *MemData) SetLifetime(d time.Duration) {
 }
 
 // SetValue sets the value of current instance.
-func (i *MemData) SetValue(value interface{}) {
-	i.value = value
+func (i *MemData) SetValue(value interface{}) error {
+	b, err := msgpack.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	i.value = b
+	return nil
 }
