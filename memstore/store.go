@@ -77,6 +77,43 @@ func (s *Store) Add(key string, value interface{}) error {
 	return nil
 }
 
+func (s *Store) atomicInteger(key string, inc int) (int, error) {
+	switch s.gc() {
+	case dot.ReadLocked:
+		s.mutex.RUnlock()
+		s.mutex.Lock()
+	case dot.Unlocked:
+		s.mutex.Lock()
+	}
+	defer s.mutex.Unlock()
+
+	v, err := s.unsafeGet(key)
+	if err != nil {
+		data, err := NewMemData(s.lifetime, inc)
+		if err != nil {
+			return 0, err
+		}
+
+		s.values[key] = data
+		return inc, nil
+	}
+
+	var value int
+	if err := v.Value(&value); err != nil {
+		return 0, err
+	}
+
+	value += inc
+	v.SetValue(value)
+
+	if !s.isTransient {
+		v.SetLifetime(s.lifetime)
+		v.Hit()
+	}
+
+	return value, nil
+}
+
 // Count gets the number of stored values by current instance.
 func (s *Store) Count() (int, error) {
 	switch s.gc() {
@@ -87,6 +124,24 @@ func (s *Store) Count() (int, error) {
 	}
 
 	return len(s.values), nil
+}
+
+// Decrement atomically gets the value stored by specified key and
+// decrements it by one. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) Decrement(key string) (int, error) {
+	return s.atomicInteger(key, -1)
+}
+
+// DecrementBy atomically gets the value stored by specified key and
+// decrements it by value. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) DecrementBy(key string, value int) (int, error) {
+	return s.atomicInteger(key, -1*value)
 }
 
 // Delete deletes the specified key:value.
@@ -195,19 +250,37 @@ func (s *Store) gc() dot.LockStatus {
 	return dot.ReadLocked
 }
 
+// Increment atomically gets the value stored by specified key and
+// increments it by one. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) Increment(key string) (int, error) {
+	return s.atomicInteger(key, 1)
+}
+
+// IncrementBy atomically gets the value stored by specified key and
+// increments it by value. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) IncrementBy(key string, value int) (int, error) {
+	return s.atomicInteger(key, value)
+}
+
 // Set sets the value of specified key.
 //
 // Errors:
 // InvalidKeyError when requested key could not be found.
 func (s *Store) Set(key string, value interface{}) error {
 	switch s.gc() {
-	case dot.WriteLocked:
-		s.mutex.Unlock()
-		s.mutex.RLock()
+	case dot.ReadLocked:
+		s.mutex.RUnlock()
+		s.mutex.Lock()
 	case dot.Unlocked:
-		s.mutex.RLock()
+		s.mutex.Lock()
 	}
-	defer s.mutex.RUnlock()
+	defer s.mutex.Unlock()
 
 	v, err := s.unsafeGet(key)
 	if err != nil {
@@ -232,13 +305,13 @@ func (s *Store) SetLifetime(d time.Duration, scope data.LifetimeScope) error {
 	switch scope {
 	case data.ScopeAll:
 		switch s.gc() {
-		case dot.WriteLocked:
-			s.mutex.Unlock()
-			s.mutex.RLock()
+		case dot.ReadLocked:
+			s.mutex.RUnlock()
+			s.mutex.Lock()
 		case dot.Unlocked:
-			s.mutex.RLock()
+			s.mutex.Lock()
 		}
-		defer s.mutex.RUnlock()
+		defer s.mutex.Unlock()
 
 		for _, v := range s.values {
 			v.SetLifetime(d)

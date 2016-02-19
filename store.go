@@ -33,6 +33,20 @@ type Store interface {
 	// NotSupportedError when current method cannot be implemented.
 	Count() (int, error)
 
+	// Decrement atomically gets the value stored by specified key and
+	// decrements it by one. If the key does not exist, it is created.
+	//
+	// Errors:
+	// InvalidTypeError when the value stored at key is not integer.
+	Decrement(key string) (int, error)
+
+	// DecrementBy atomically gets the value stored by specified key and
+	// decrements it by value. If the key does not exist, it is created.
+	//
+	// Errors:
+	// InvalidTypeError when the value stored at key is not integer.
+	DecrementBy(key string, value int) (int, error)
+
 	// Delete deletes the specified value.
 	//
 	// Errors:
@@ -54,6 +68,20 @@ type Store interface {
 
 	// GC garbage collects all expired data.
 	GC()
+
+	// Increment atomically gets the value stored by specified key and
+	// increments it by one. If the key does not exist, it is created.
+	//
+	// Errors:
+	// InvalidTypeError when the value stored at key is not integer.
+	Increment(key string) (int, error)
+
+	// IncrementBy atomically gets the value stored by specified key and
+	// increments it by value. If the key does not exist, it is created.
+	//
+	// Errors:
+	// InvalidTypeError when the value stored at key is not integer.
+	IncrementBy(key string, value int) (int, error)
 
 	// Set sets the value of specified key.
 	//

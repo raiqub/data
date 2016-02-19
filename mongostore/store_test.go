@@ -32,9 +32,19 @@ const (
 	mongoURLTpl = "mongodb://%s:%d/raiqub"
 )
 
+type TestLogger struct {
+	t *testing.T
+}
+
+func (l TestLogger) Output(calldepth int, s string) error {
+	l.t.Log(s)
+	return nil
+}
+
 func TestMongoStore(t *testing.T) {
 	session, env := prepareMongoEnvironment(t)
 	defer env.Dispose()
+	mgo.SetLogger(TestLogger{t})
 
 	//	session, err := openSession("mongodb://localhost/raiqub")
 	//	if err != nil {
@@ -44,6 +54,10 @@ func TestMongoStore(t *testing.T) {
 
 	store := New(session.DB(""), colName, time.Millisecond)
 	store.EnsureAccuracy(true)
+
+	testdata.TestAtomic(store, t)
+
+	store.Flush()
 	testdata.TestExpiration(store, t)
 
 	store.Flush()
@@ -77,6 +91,15 @@ func BenchmarkMongoStoreAddGetTransient(b *testing.B) {
 	store := New(session.DB(""), colName, time.Second)
 	store.SetTransient(true)
 	testdata.BenchmarkAddGet(store, b)
+}
+
+func BenchmarkMongoAtomicIncrement(b *testing.B) {
+	session, env := prepareMongoEnvironment(b)
+	defer env.Dispose()
+
+	store := New(session.DB(""), colName, time.Second)
+	store.SetTransient(true)
+	testdata.BenchmarkAtomicIncrement(store, b)
 }
 
 func openSession(url string) (*mgo.Session, error) {

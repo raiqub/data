@@ -42,6 +42,9 @@ func TestMemStore(t *testing.T) {
 
 	store.Flush()
 	testdata.TestTransient(store, t)
+
+	store.Flush()
+	testdata.TestAtomic(store, t)
 }
 
 func BenchmarkMemStoreAddGet(b *testing.B) {
@@ -52,4 +55,9 @@ func BenchmarkMemStoreAddGet(b *testing.B) {
 func BenchmarkMemStoreAddGetTransient(b *testing.B) {
 	store := New(0, true)
 	testdata.BenchmarkAddGet(store, b)
+}
+
+func BenchmarkMemStoreAtomicIncrement(b *testing.B) {
+	store := New(0, true)
+	testdata.BenchmarkAtomicIncrement(store, b)
 }

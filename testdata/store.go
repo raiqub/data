@@ -27,6 +27,49 @@ import (
 	"gopkg.in/raiqub/dot.v1"
 )
 
+func TestAtomic(store data.Store, t *testing.T) {
+	if err := store.SetLifetime(time.Hour*1, data.ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
+
+	key := "user001"
+	values := make(chan int, 5)
+
+	go func() {
+		for i := 0; i < 102; i++ {
+			value, err := store.Increment(key)
+			if err != nil {
+				t.Errorf("Could not increment value: %v", err)
+			}
+			values <- value
+			time.Sleep(time.Millisecond * 200)
+		}
+	}()
+	go func() {
+		for i := 0; i < 100; i++ {
+			value, err := store.Decrement(key)
+			if err != nil {
+				t.Errorf("Could not decrement value: %v", err)
+			}
+			values <- value
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
+
+	for i := 0; i < 202; i++ {
+		<-values
+	}
+
+	var value int
+	if err := store.Get(key, &value); err != nil {
+		t.Errorf("The value %s was not stored: %v", key, err)
+	}
+
+	if value != 2 {
+		t.Errorf("The value of %s should be 2 but got %d", key, value)
+	}
+}
+
 func TestExpiration(store data.Store, t *testing.T) {
 	testValues := map[string]int{
 		"v1": 3,
@@ -315,4 +358,28 @@ func BenchmarkAddGet(store data.Store, b *testing.B) {
 	}
 
 	b.StopTimer()
+}
+
+func BenchmarkAtomicIncrement(store data.Store, b *testing.B) {
+	if err := store.SetLifetime(time.Second*30, data.ScopeAll); err != nil {
+		b.Skip("Set lifetime to all items is not supported")
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := store.Increment("key001"); err != nil {
+			b.Errorf("Could not increment value: %v", err)
+		}
+	}
+
+	b.StopTimer()
+
+	var result int
+	if err := store.Get("key001", &result); err != nil {
+		b.Errorf("Could not get stored value: %v", err)
+	}
+	if result != b.N {
+		b.Errorf("Unexpected value: got %d instead of %d", result, b.N)
+	}
 }

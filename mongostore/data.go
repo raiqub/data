@@ -22,7 +22,8 @@ import "time"
 type Data struct {
 	CreatedAt time.Time `bson:"at"`
 	Key       string    `bson:"_id"`
-	Value     string    `bson:"val"`
+	Value     string    `bson:"val,omitempty"`
+	IntVal    int       `bson:"ival,omitempty"`
 }
 
 // IsExpired returns whether current value is expired.

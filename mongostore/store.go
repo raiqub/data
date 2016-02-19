@@ -81,15 +81,28 @@ func New(db *mgo.Database, name string, d time.Duration) *Store {
 //
 // mgo.LastError when a error from MongoDB is triggered.
 func (s *Store) Add(key string, value interface{}) error {
-	b, err := msgpack.Marshal(value)
-	if err != nil {
-		return err
-	}
-
 	doc := Data{
 		time.Now(),
 		key,
-		string(b),
+		"",
+		0,
+	}
+
+	switch t := value.(type) {
+	case int:
+		doc.IntVal = t
+	case *int:
+		doc.IntVal = *t
+	case string:
+		doc.Value = t
+	case *string:
+		doc.Value = *t
+	default:
+		b, err := msgpack.Marshal(value)
+		if err != nil {
+			return err
+		}
+		doc.Value = string(b)
 	}
 
 	if err := s.col.Insert(&doc); err != nil {
@@ -104,12 +117,63 @@ func (s *Store) Add(key string, value interface{}) error {
 	return nil
 }
 
+func (s *Store) atomicInteger(key string, inc int) (int, error) {
+	query := bson.M{"$inc": bson.M{"ival": inc}}
+	if s.isTransient {
+		query["$setOnInsert"] = bson.M{"at": time.Now()}
+	} else {
+		query["$currentDate"] = bson.M{"at": true}
+	}
+
+	change := mgo.Change{
+		Update:    query,
+		Upsert:    true,
+		ReturnNew: true,
+	}
+
+	// db.runCommand({
+	// 	findAndModify: "col",
+	// 	query: { _id: %key },
+	// 	update: {
+	// 		$inc: { val: %inc },
+	// 		$setOnInsert: { at: new ISODate() }
+	// 	},
+	// 	new: true,
+	// 	upsert: true
+	// })
+	doc := Data{}
+	_, err := s.col.FindId(key).Apply(change, &doc)
+	if err != nil {
+		return 0, err
+	}
+
+	return doc.IntVal, nil
+}
+
 // Count gets the number of stored values by current instance.
 //
 // Errors:
 // mgo.LastError when a error from MongoDB is triggered.
 func (s *Store) Count() (int, error) {
 	return s.col.Count()
+}
+
+// Decrement atomically gets the value stored by specified key and
+// decrements it by one. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) Decrement(key string) (int, error) {
+	return s.atomicInteger(key, -1)
+}
+
+// DecrementBy atomically gets the value stored by specified key and
+// decrements it by value. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) DecrementBy(key string, value int) (int, error) {
+	return s.atomicInteger(key, -1*value)
 }
 
 // Delete deletes the specified value.
@@ -178,11 +242,7 @@ func (s *Store) Get(key string, ref interface{}) error {
 		}
 	}
 
-	doc := Data{
-		time.Time{},
-		"",
-		"",
-	}
+	doc := Data{}
 	err := s.col.FindId(key).One(&doc)
 	if err != nil {
 		if err == mgo.ErrNotFound {
@@ -191,12 +251,37 @@ func (s *Store) Get(key string, ref interface{}) error {
 		return err
 	}
 
-	err = msgpack.Unmarshal([]byte(doc.Value), &ref)
-	if err != nil {
-		return err
+	switch t := ref.(type) {
+	case *int:
+		*t = doc.IntVal
+	case *string:
+		*t = doc.Value
+	default:
+		err = msgpack.Unmarshal([]byte(doc.Value), ref)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+// Increment atomically gets the value stored by specified key and
+// increments it by one. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) Increment(key string) (int, error) {
+	return s.atomicInteger(key, 1)
+}
+
+// IncrementBy atomically gets the value stored by specified key and
+// increments it by value. If the key does not exist, it is created.
+//
+// Errors:
+// InvalidTypeError when the value stored at key is not integer.
+func (s *Store) IncrementBy(key string, value int) (int, error) {
+	return s.atomicInteger(key, value)
 }
 
 // Set sets the value of specified key.
@@ -207,12 +292,25 @@ func (s *Store) Get(key string, ref interface{}) error {
 //
 // mgo.LastError when a error from MongoDB is triggered.
 func (s *Store) Set(key string, value interface{}) error {
-	b, err := msgpack.Marshal(value)
-	if err != nil {
-		return err
+	qSet := bson.M{}
+	switch t := value.(type) {
+	case int:
+		qSet["ival"] = t
+	case *int:
+		qSet["ival"] = *t
+	case string:
+		qSet["val"] = t
+	case *string:
+		qSet["val"] = *t
+	default:
+		b, err := msgpack.Marshal(value)
+		if err != nil {
+			return err
+		}
+		qSet["val"] = string(b)
 	}
 
-	query := bson.M{"$set": bson.M{"val": string(b)}}
+	query := bson.M{"$set": qSet}
 	if !s.isTransient {
 		query["$currentDate"] = bson.M{"at": true}
 	}
@@ -269,11 +367,7 @@ func (s *Store) SetTransient(value bool) {
 }
 
 func (s *Store) testExpiration(key string) error {
-	doc := Data{
-		time.Time{},
-		key,
-		"",
-	}
+	doc := Data{}
 
 	err := s.col.FindId(key).One(&doc)
 	if err != nil {

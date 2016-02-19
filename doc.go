@@ -20,7 +20,7 @@ storages.
 
 Store
 
-Store is the the inteface implemented by an object that provides a storage for
+Store is the inteface implemented by an object that provides a storage for
 expirable values.
 
 A Store object can manage an application context. Creating an application
