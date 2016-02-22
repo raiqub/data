@@ -2,6 +2,7 @@
 
 GOPKG_PATH=$GOPATH/src/gopkg.in/raiqub/data.v0
 GITHUB_PATH=$GOPATH/src/github.com/raiqub/data
+TMP_PATH=${GOPKG_PATH}.TMP
 
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c SIGINT
@@ -15,14 +16,26 @@ function prepare() {
 		echo "Directory '$GITHUB_PATH' not found" >&2
 		exit 1
 	fi
+	if [ -d "$TMP_PATH" ]; then
+		echo "Directory '$TMP_PATH' exists" >&2
+		exit 1
+	fi
 	
-	mv "$GOPKG_PATH" "$GOPKG_PATH.TMP"
+	mv "$GOPKG_PATH" "$TMP_PATH"
 	ln -s "$GITHUB_PATH" "$GOPKG_PATH"
 }
 function finalize() {
-	if [ -d "$GOPKG_PATH.TMP" ]; then
+	if [ ! -d "$TMP_PATH" ]; then
+		echo "Directory '$TMP_PATH' not found" >&2
+		exit 1
+	fi
+	if [ ! -h "$GOPKG_PATH" ]; then
+		echo "'$GOPKG_PATH' is not a symbolic link" >&2
+		exit 1
+	fi
+	if [ -d "$TMP_PATH" ]; then
 		rm "$GOPKG_PATH"
-		mv "$GOPKG_PATH.TMP" "$GOPKG_PATH"
+		mv "$TMP_PATH" "$GOPKG_PATH"
 	fi
 }
 

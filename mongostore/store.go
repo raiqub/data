@@ -81,7 +81,7 @@ func New(db *mgo.Database, name string, d time.Duration) *Store {
 //
 // mgo.LastError when a error from MongoDB is triggered.
 func (s *Store) Add(key string, value interface{}) error {
-	doc := Data{
+	doc := entry{
 		time.Now(),
 		key,
 		nil,
@@ -142,7 +142,7 @@ func (s *Store) atomicInteger(key string, inc int) (int, error) {
 	// 	new: true,
 	// 	upsert: true
 	// })
-	doc := Data{}
+	doc := entry{}
 	_, err := s.col.FindId(key).Apply(change, &doc)
 	if err != nil {
 		return 0, err
@@ -243,7 +243,7 @@ func (s *Store) Get(key string, ref interface{}) error {
 		}
 	}
 
-	doc := Data{}
+	doc := entry{}
 	err := s.col.FindId(key).One(&doc)
 	if err != nil {
 		if err == mgo.ErrNotFound {
@@ -383,7 +383,7 @@ func (s *Store) SetTransient(value bool) {
 }
 
 func (s *Store) testExpiration(key string) error {
-	doc := Data{}
+	doc := entry{}
 
 	err := s.col.FindId(key).One(&doc)
 	if err != nil {

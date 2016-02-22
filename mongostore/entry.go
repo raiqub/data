@@ -18,8 +18,8 @@ package mongostore
 
 import "time"
 
-// A Data represents a document stored on MongoDB collection.
-type Data struct {
+// A entry represents a document stored on MongoDB collection.
+type entry struct {
 	CreatedAt time.Time `bson:"at"`
 	Key       string    `bson:"_id"`
 	Value     *string   `bson:"val,omitempty"`
@@ -27,6 +27,6 @@ type Data struct {
 }
 
 // IsExpired returns whether current value is expired.
-func (d *Data) IsExpired(lifetime time.Duration) bool {
+func (d *entry) IsExpired(lifetime time.Duration) bool {
 	return time.Now().After(d.CreatedAt.Add(lifetime))
 }

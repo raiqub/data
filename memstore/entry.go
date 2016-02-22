@@ -22,21 +22,21 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
-// A MemData represents a in-memory value whereof has a defined lifetime.
-type MemData struct {
+// A entry represents a in-memory value managed by Store.
+type entry struct {
 	expireAt time.Time
 	lifetime time.Duration
 	value    []byte
 }
 
-// NewMemData creates a new in-memory data.
-func NewMemData(lifetime time.Duration, value interface{}) (*MemData, error) {
+// newEntry creates a new entry for Store.
+func newEntry(lifetime time.Duration, value interface{}) (*entry, error) {
 	b, err := msgpack.Marshal(value)
 	if err != nil {
 		return nil, err
 	}
 
-	return &MemData{
+	return &entry{
 		expireAt: time.Now().Add(lifetime),
 		lifetime: lifetime,
 		value:    b,
@@ -44,23 +44,23 @@ func NewMemData(lifetime time.Duration, value interface{}) (*MemData, error) {
 }
 
 // Delete removes current data.
-func (i *MemData) Delete() {
+func (i *entry) Delete() {
 	i.value = nil
 }
 
 // IsExpired returns whether current value is expired.
-func (i *MemData) IsExpired() bool {
+func (i *entry) IsExpired() bool {
 	return time.Now().After(i.expireAt)
 }
 
 // Hit postpone data expiration time to current time added to its lifetime
 // duration.
-func (i *MemData) Hit() {
+func (i *entry) Hit() {
 	i.expireAt = time.Now().Add(i.lifetime)
 }
 
 // Value of current instance.
-func (i *MemData) Value(ref interface{}) error {
+func (i *entry) Value(ref interface{}) error {
 	err := msgpack.Unmarshal(i.value, &ref)
 	if err != nil {
 		return err
@@ -70,12 +70,12 @@ func (i *MemData) Value(ref interface{}) error {
 }
 
 // SetLifetime sets the lifetime duration for current instance.
-func (i *MemData) SetLifetime(d time.Duration) {
+func (i *entry) SetLifetime(d time.Duration) {
 	i.lifetime = d
 }
 
 // SetValue sets the value of current instance.
-func (i *MemData) SetValue(value interface{}) error {
+func (i *entry) SetValue(value interface{}) error {
 	b, err := msgpack.Marshal(value)
 	if err != nil {
 		return err

@@ -30,7 +30,7 @@ import (
 //
 // It is a implementation of Store interface.
 type Store struct {
-	values      map[string]Data
+	values      map[string]*entry
 	lifetime    time.Duration
 	isTransient bool
 	mutex       sync.RWMutex
@@ -44,7 +44,7 @@ type Store struct {
 // renewed when it is read or written; Otherwise, it is never renewed.
 func New(d time.Duration, isTransient bool) *Store {
 	return &Store{
-		values:      make(map[string]Data),
+		values:      make(map[string]*entry),
 		lifetime:    d,
 		isTransient: isTransient,
 	}
@@ -64,7 +64,7 @@ func (s *Store) Add(key string, value interface{}) error {
 	}
 	defer s.mutex.Unlock()
 
-	data, err := NewMemData(s.lifetime, value)
+	data, err := newEntry(s.lifetime, value)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (s *Store) atomicInteger(key string, inc int) (int, error) {
 
 	v, err := s.unsafeGet(key)
 	if err != nil {
-		data, err := NewMemData(s.lifetime, inc)
+		data, err := newEntry(s.lifetime, inc)
 		if err != nil {
 			return 0, err
 		}
@@ -181,7 +181,7 @@ func (s *Store) Flush() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.values = make(map[string]Data)
+	s.values = make(map[string]*entry)
 	return nil
 }
 
@@ -338,11 +338,11 @@ func (s *Store) SetTransient(value bool) {
 	s.isTransient = value
 }
 
-// unsafeGet gets one Data instance from its key without locking.
+// unsafeGet gets one entry instance from its key without locking.
 //
 // Errors:
 // InvalidKeyError when requested key could not be found.
-func (s *Store) unsafeGet(key string) (Data, error) {
+func (s *Store) unsafeGet(key string) (*entry, error) {
 	v, ok := s.values[key]
 	if !ok {
 		return nil, dot.InvalidKeyError(key)
