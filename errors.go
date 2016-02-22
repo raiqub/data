@@ -26,6 +26,11 @@ type InvalidTypeError struct {
 	Value interface{}
 }
 
+// NewInvalidTypeError returns a new instance of InvalidTypeError.
+func NewInvalidTypeError(value interface{}) InvalidTypeError {
+	return InvalidTypeError{value}
+}
+
 // Error returns string representation of current instance error.
 func (e InvalidTypeError) Error() string {
 	return fmt.Sprintf("Unexpected type: %T", e.Value)

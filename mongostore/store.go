@@ -252,17 +252,17 @@ func (s *Store) Get(key string, ref interface{}) error {
 	switch t := ref.(type) {
 	case *int:
 		if doc.IntVal == nil {
-			return data.InvalidTypeError{ref}
+			return data.NewInvalidTypeError(ref)
 		}
 		*t = *doc.IntVal
 	case *string:
 		if doc.Value == nil {
-			return data.InvalidTypeError{ref}
+			return data.NewInvalidTypeError(ref)
 		}
 		*t = *doc.Value
 	default:
 		if doc.Value == nil {
-			return data.InvalidTypeError{ref}
+			return data.NewInvalidTypeError(ref)
 		}
 		err = msgpack.Unmarshal([]byte(*doc.Value), ref)
 		if err != nil {
