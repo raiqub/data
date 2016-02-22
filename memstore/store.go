@@ -34,7 +34,7 @@ type Store struct {
 	lifetime    time.Duration
 	isTransient bool
 	mutex       sync.RWMutex
-	lastgc      time.Time
+	gcRunning   bool
 }
 
 // New creates a new instance of in-memory Store and defines the default
@@ -55,13 +55,7 @@ func New(d time.Duration, isTransient bool) *Store {
 // Errors:
 // DuplicatedKeyError when requested key already exists.
 func (s *Store) Add(key string, value interface{}) error {
-	switch s.gc() {
-	case dot.ReadLocked:
-		s.mutex.RUnlock()
-		s.mutex.Lock()
-	case dot.Unlocked:
-		s.mutex.Lock()
-	}
+	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	data, err := newEntry(s.lifetime, value)
@@ -73,18 +67,15 @@ func (s *Store) Add(key string, value interface{}) error {
 		return dot.DuplicatedKeyError(key)
 	}
 
+	if !s.gcRunning {
+		go s.gc()
+	}
 	s.values[key] = data
 	return nil
 }
 
 func (s *Store) atomicInteger(key string, inc int) (int, error) {
-	switch s.gc() {
-	case dot.ReadLocked:
-		s.mutex.RUnlock()
-		s.mutex.Lock()
-	case dot.Unlocked:
-		s.mutex.Lock()
-	}
+	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	v, err := s.unsafeGet(key)
@@ -94,6 +85,9 @@ func (s *Store) atomicInteger(key string, inc int) (int, error) {
 			return 0, err
 		}
 
+		if !s.gcRunning {
+			go s.gc()
+		}
 		s.values[key] = data
 		return inc, nil
 	}
@@ -116,12 +110,8 @@ func (s *Store) atomicInteger(key string, inc int) (int, error) {
 
 // Count gets the number of stored values by current instance.
 func (s *Store) Count() (int, error) {
-	switch s.gc() {
-	case dot.WriteLocked:
-		s.mutex.Unlock()
-	case dot.ReadLocked:
-		s.mutex.RUnlock()
-	}
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
 	return len(s.values), nil
 }
@@ -149,28 +139,13 @@ func (s *Store) DecrementBy(key string, value int) (int, error) {
 // Errors:
 // InvalidKeyError when requested key could not be found.
 func (s *Store) Delete(key string) error {
-	lckStatus := s.gc()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	_, err := s.unsafeGet(key)
 	if err != nil {
-		switch lckStatus {
-		case dot.WriteLocked:
-			s.mutex.Unlock()
-		case dot.ReadLocked:
-			s.mutex.RUnlock()
-		}
-
 		return err
 	}
-
-	switch lckStatus {
-	case dot.ReadLocked:
-		s.mutex.RUnlock()
-		s.mutex.Lock()
-	case dot.Unlocked:
-		s.mutex.Lock()
-	}
-	defer s.mutex.Unlock()
 
 	delete(s.values, key)
 	return nil
@@ -190,14 +165,13 @@ func (s *Store) Flush() error {
 // Errors:
 // InvalidKeyError when requested key could not be found.
 func (s *Store) Get(key string, ref interface{}) error {
-	switch s.gc() {
-	case dot.WriteLocked:
-		s.mutex.Unlock()
+	if s.isTransient {
 		s.mutex.RLock()
-	case dot.Unlocked:
-		s.mutex.RLock()
+		defer s.mutex.RUnlock()
+	} else {
+		s.mutex.Lock()
+		defer s.mutex.Unlock()
 	}
-	defer s.mutex.RUnlock()
 
 	v, err := s.unsafeGet(key)
 	if err != nil {
@@ -213,41 +187,52 @@ func (s *Store) Get(key string, ref interface{}) error {
 
 // GC garbage collects all expired data.
 func (s *Store) GC() {
-	switch s.gc() {
-	case dot.ReadLocked:
-		s.mutex.RUnlock()
-	case dot.WriteLocked:
-		s.mutex.Unlock()
-	}
 }
 
-func (s *Store) gc() dot.LockStatus {
-	// Do not GC intervals smaller than 1/5 of current lifetime
-	minInterval := s.lifetime / 5
-	if s.lastgc.Add(minInterval).After(time.Now()) {
-		return dot.Unlocked
+func (s *Store) gc() {
+	s.mutex.Lock()
+	if s.gcRunning {
+		s.mutex.Unlock()
+		return
 	}
 
-	s.lastgc = time.Now()
-	writeLocked := false
-	s.mutex.RLock()
-	for i := range s.values {
-		if s.values[i].IsExpired() {
-			if !writeLocked {
-				s.mutex.RUnlock()
-				s.mutex.Lock()
-				writeLocked = true
+	// Schedule GC at 1/5 intervals of current lifetime.
+	interval := s.lifetime / 5
+	s.gcRunning = true
+	s.mutex.Unlock()
+
+	for {
+		<-time.After(interval)
+
+		writeLocked := false
+		s.mutex.RLock()
+		for i := range s.values {
+			if s.values[i].IsExpired() {
+				if !writeLocked {
+					s.mutex.RUnlock()
+					s.mutex.Lock()
+					writeLocked = true
+				}
+				// TODO: Investigate how buckets are consolidated
+				delete(s.values, i)
 			}
-			// TODO: Investigate how buckets are consolidated
-			delete(s.values, i)
+		}
+
+		interval = s.lifetime / 5
+		isEmpty := len(s.values) == 0
+		if isEmpty {
+			s.gcRunning = false
+		}
+		if writeLocked {
+			s.mutex.Unlock()
+		} else {
+			s.mutex.RUnlock()
+		}
+
+		if isEmpty {
+			return
 		}
 	}
-
-	if writeLocked {
-		return dot.WriteLocked
-	}
-
-	return dot.ReadLocked
 }
 
 // Increment atomically gets the value stored by specified key and
@@ -273,13 +258,7 @@ func (s *Store) IncrementBy(key string, value int) (int, error) {
 // Errors:
 // InvalidKeyError when requested key could not be found.
 func (s *Store) Set(key string, value interface{}) error {
-	switch s.gc() {
-	case dot.ReadLocked:
-		s.mutex.RUnlock()
-		s.mutex.Lock()
-	case dot.Unlocked:
-		s.mutex.Lock()
-	}
+	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	v, err := s.unsafeGet(key)
@@ -302,23 +281,15 @@ func (s *Store) Set(key string, value interface{}) error {
 // Errors:
 // NotSupportedError when ScopeNew is specified.
 func (s *Store) SetLifetime(d time.Duration, scope data.LifetimeScope) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	switch scope {
 	case data.ScopeAll:
-		switch s.gc() {
-		case dot.ReadLocked:
-			s.mutex.RUnlock()
-			s.mutex.Lock()
-		case dot.Unlocked:
-			s.mutex.Lock()
-		}
-		defer s.mutex.Unlock()
-
 		for _, v := range s.values {
 			v.SetLifetime(d)
 		}
 	case data.ScopeNewAndUpdated:
-		s.mutex.RLock()
-		defer s.mutex.RUnlock()
 	case data.ScopeNew:
 		return dot.NotSupportedError("ScopeNew")
 	default:
