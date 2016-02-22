@@ -204,6 +204,28 @@ func TestTransient(store data.Store, t *testing.T) {
 	}
 }
 
+func TestTypeError(store data.Store, t *testing.T) {
+	if err := store.SetLifetime(time.Second*1, data.ScopeAll); err != nil {
+		t.Skip("Set lifetime to all items is not supported")
+	}
+
+	if err := store.Add("v1", 15); err != nil {
+		t.Errorf("The value %d could not be added", 15)
+	}
+	var str string
+	if err := store.Get("v1", &str); err == nil {
+		t.Errorf("The value %s should not be read", "v1")
+	}
+
+	if err := store.Add("v2", "15"); err != nil {
+		t.Errorf("The value %s could not be added", "15")
+	}
+	var integer int
+	if err := store.Get("v2", &integer); err == nil {
+		t.Errorf("The value %s should not be read", "v2")
+	}
+}
+
 func TestValueHandling(store data.Store, t *testing.T) {
 	type valueType struct {
 		Number int

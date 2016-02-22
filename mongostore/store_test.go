@@ -74,6 +74,9 @@ func TestMongoStore(t *testing.T) {
 
 	store.Flush()
 	testdata.TestTransient(store, t)
+
+	store.Flush()
+	testdata.TestTypeError(store, t)
 }
 
 func BenchmarkMongoStoreAddGet(b *testing.B) {

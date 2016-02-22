@@ -84,25 +84,26 @@ func (s *Store) Add(key string, value interface{}) error {
 	doc := Data{
 		time.Now(),
 		key,
-		"",
-		0,
+		nil,
+		nil,
 	}
 
 	switch t := value.(type) {
 	case int:
-		doc.IntVal = t
+		doc.IntVal = &t
 	case *int:
-		doc.IntVal = *t
+		doc.IntVal = t
 	case string:
-		doc.Value = t
+		doc.Value = &t
 	case *string:
-		doc.Value = *t
+		doc.Value = t
 	default:
 		b, err := msgpack.Marshal(value)
 		if err != nil {
 			return err
 		}
-		doc.Value = string(b)
+		strValue := string(b)
+		doc.Value = &strValue
 	}
 
 	if err := s.col.Insert(&doc); err != nil {
@@ -147,7 +148,7 @@ func (s *Store) atomicInteger(key string, inc int) (int, error) {
 		return 0, err
 	}
 
-	return doc.IntVal, nil
+	return *doc.IntVal, nil
 }
 
 // Count gets the number of stored values by current instance.
@@ -253,11 +254,20 @@ func (s *Store) Get(key string, ref interface{}) error {
 
 	switch t := ref.(type) {
 	case *int:
-		*t = doc.IntVal
+		if doc.IntVal == nil {
+			return data.InvalidTypeError{ref}
+		}
+		*t = *doc.IntVal
 	case *string:
-		*t = doc.Value
+		if doc.Value == nil {
+			return data.InvalidTypeError{ref}
+		}
+		*t = *doc.Value
 	default:
-		err = msgpack.Unmarshal([]byte(doc.Value), ref)
+		if doc.Value == nil {
+			return data.InvalidTypeError{ref}
+		}
+		err = msgpack.Unmarshal([]byte(*doc.Value), ref)
 		if err != nil {
 			return err
 		}
@@ -293,24 +303,30 @@ func (s *Store) IncrementBy(key string, value int) (int, error) {
 // mgo.LastError when a error from MongoDB is triggered.
 func (s *Store) Set(key string, value interface{}) error {
 	qSet := bson.M{}
+	unset := bson.M{}
 	switch t := value.(type) {
 	case int:
 		qSet["ival"] = t
+		unset["val"] = ""
 	case *int:
 		qSet["ival"] = *t
+		unset["val"] = ""
 	case string:
 		qSet["val"] = t
+		unset["ival"] = ""
 	case *string:
 		qSet["val"] = *t
+		unset["ival"] = ""
 	default:
 		b, err := msgpack.Marshal(value)
 		if err != nil {
 			return err
 		}
 		qSet["val"] = string(b)
+		unset["ival"] = ""
 	}
 
-	query := bson.M{"$set": qSet}
+	query := bson.M{"$set": qSet, "$unset": unset}
 	if !s.isTransient {
 		query["$currentDate"] = bson.M{"at": true}
 	}

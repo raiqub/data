@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package mongostore
+package data
 
-import "time"
+import (
+	"fmt"
+)
 
-// A Data represents a document stored on MongoDB collection.
-type Data struct {
-	CreatedAt time.Time `bson:"at"`
-	Key       string    `bson:"_id"`
-	Value     *string   `bson:"val,omitempty"`
-	IntVal    *int      `bson:"ival,omitempty"`
+// A InvalidTypeError represents an error when value type is different than
+// expected.
+type InvalidTypeError struct {
+	Value interface{}
 }
 
-// IsExpired returns whether current value is expired.
-func (d *Data) IsExpired(lifetime time.Duration) bool {
-	return time.Now().After(d.CreatedAt.Add(lifetime))
+// Error returns string representation of current instance error.
+func (e InvalidTypeError) Error() string {
+	return fmt.Sprintf("Unexpected type: %T", e.Value)
 }

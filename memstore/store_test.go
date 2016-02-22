@@ -45,6 +45,9 @@ func TestMemStore(t *testing.T) {
 
 	store.Flush()
 	testdata.TestAtomic(store, t)
+
+	store.Flush()
+	testdata.TestTypeError(store, t)
 }
 
 func BenchmarkMemStoreAddGet(b *testing.B) {
