@@ -389,11 +389,14 @@ func BenchmarkAtomicIncrement(store data.Store, b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
-		if _, err := store.Increment("key001"); err != nil {
-			b.Errorf("Could not increment value: %v", err)
+	b.SetParallelism(50)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			if _, err := store.Increment("key001"); err != nil {
+				b.Errorf("Could not increment value: %v", err)
+			}
 		}
-	}
+	})
 
 	b.StopTimer()
 

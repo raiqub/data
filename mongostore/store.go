@@ -215,9 +215,6 @@ func (s *Store) Flush() error {
 	return err
 }
 
-// GC does nothing because MongoDB automatically deletes expired data.
-func (s *Store) GC() {}
-
 // Get gets the value stored by specified key and stores the result in the
 // value pointed to by ref.
 //

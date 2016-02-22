@@ -185,10 +185,6 @@ func (s *Store) Get(key string, ref interface{}) error {
 	return v.Value(ref)
 }
 
-// GC garbage collects all expired data.
-func (s *Store) GC() {
-}
-
 func (s *Store) gc() {
 	s.mutex.Lock()
 	if s.gcRunning {

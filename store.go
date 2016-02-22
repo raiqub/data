@@ -60,9 +60,6 @@ type Store interface {
 	// InvalidKeyError when requested key could not be found.
 	Get(key string, ref interface{}) error
 
-	// GC garbage collects all expired data.
-	GC()
-
 	// Increment atomically gets the value stored by specified key and
 	// increments it by one. If the key does not exist, it is created.
 	Increment(key string) (int, error)

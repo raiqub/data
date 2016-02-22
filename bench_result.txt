@@ -1,6 +1,6 @@
-BenchmarkMemStoreAddGet-4         	 1000000	      3169 ns/op	     585 B/op	      11 allocs/op
-BenchmarkMemStoreAddGetTransient-4	 1000000	      3167 ns/op	     585 B/op	      11 allocs/op
-BenchmarkMemStoreAtomicIncrement-4	 1000000	      1502 ns/op	     384 B/op	       9 allocs/op
-BenchmarkMongoStoreAddGet-4         	    5000	    291290 ns/op	    9807 B/op	     217 allocs/op
-BenchmarkMongoStoreAddGetTransient-4	   10000	    160278 ns/op	    5176 B/op	     121 allocs/op
-BenchmarkMongoAtomicIncrement-4     	   10000	    129969 ns/op	    7464 B/op	     169 allocs/op
+BenchmarkMemStoreAddGet-4         	  500000	      3430 ns/op	     585 B/op	      11 allocs/op
+BenchmarkMemStoreAddGetTransient-4	 1000000	      3105 ns/op	     585 B/op	      11 allocs/op
+BenchmarkMemStoreAtomicIncrement-4	 1000000	      2431 ns/op	     384 B/op	       9 allocs/op
+BenchmarkMongoStoreAddGet-4         	    5000	    303753 ns/op	    9808 B/op	     217 allocs/op
+BenchmarkMongoStoreAddGetTransient-4	   10000	    180099 ns/op	    5176 B/op	     121 allocs/op
+BenchmarkMongoAtomicIncrement-4     	   20000	     88988 ns/op	    7507 B/op	     169 allocs/op
